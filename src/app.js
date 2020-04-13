@@ -1,18 +1,15 @@
 const express = require('express');
 const app = express();
 const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
-const zabbixSender = require('../src/bin/zabbix_sender.js');
+const zabbixSender = require('../src/services/zabbix_sender.js');
 
-const zbServer = '192.168.100.250';
-const zbxHost = 'nodejs';
 const statusDb = {
-    connected: 0,
-    error: 1,
+    connected: 1,
+    error: 0,
     disconnected: 2
 }
 
-const DbURL = 'mongodb://localhost:27017/nodapi';
+const DbURL = 'mongodb://localhost:27017/nodeapi';
 const options = { poolSize: 5, useUnifiedTopology: true, useNewUrlParser: true };
 
 mongoose.connect(DbURL, options);
@@ -20,30 +17,29 @@ mongoose.set('useCreateIndex', true);
 
 mongoose.connection.on('error', (err) => {
     console.log('Erro na conexão com o banco de dados');
-    zabbixSender(zbServer, zbxHost, statusDb.error);
+    zabbixSender('db.status', statusDb.error);
 });
 
 mongoose.connection.on('disconnected', () => { 
     console.log('Aplicacão desconectou do banco');
-    zabbixSender(zbServer,zbxHost, statusDb.disconnected);
+    zabbixSender('db.status', statusDb.disconnected);
 });
 
 mongoose.connection.on('connected', () => {
     console.log('App conectada ao banco com sucesso');
-    zabbixSender(zbServer, zbxHost, statusDb.connected);
+    zabbixSender('db.status', statusDb.connected);
 });
 
 mongoose.connection.on('timeout', (err) => {
-    console.log('TIMEOUT NESSA PORRA');
+    console.log('Timeout');
 });
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(express.json());
 
-const userRoute = require('./Routes/users');
+const routes = require('../src/Routes/routes');
+app.use(routes)
 
-app.use('/users', userRoute);
 
-app.listen(3000);
+app.listen(3333);
 
 module.exports = app;
